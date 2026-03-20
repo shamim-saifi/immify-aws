@@ -5,6 +5,7 @@ import { Lead } from "../models/lead.model.js";
 import cloudinary from "cloudinary";
 import { Payment } from "../models/lead.payment.model.js";
 import bcrypt from 'bcrypt'
+import { deleteFromS3, uploadBase64ToS3 } from "../utils/s3Base64Upload.js";
 
 
 export const AgentSignup = TryCatch(async (req, res, next) => {
@@ -161,11 +162,94 @@ export const AgentUpdateProfile = TryCatch(async (req, res, next) => {
         });
 });
 
-export const AgentUpdateDocument = TryCatch(async (req, res, next) => {
-    // const agentId = req.params.agentId;
-    const { panCard, aadharCard, vetCertificate, companyCertificate, gstCertificate, } = req.body;
+// export const AgentUpdateDocument = TryCatch(async (req, res, next) => {
+//     // const agentId = req.params.agentId;
+//     const { panCard, aadharCard, vetCertificate, companyCertificate, gstCertificate, } = req.body;
 
+//     const agentId = req.agent._id;
+//     if (!agentId) {
+//         return next(new ErrorHandler("Agent ID is required", 400));
+//     }
+//     let agent = await Agent.findById(agentId);
+//     if (!agent) {
+//         return next(new ErrorHandler("Agent not found", 404));
+//     }
+
+//     if (panCard) {
+//         if (agent?.panCard?.public_id) {
+//             await cloudinary.v2.uploader.destroy(agent?.panCard?.public_id);
+//         }
+//         const profileUpload = await cloudinary.v2.uploader.upload(panCard, {
+//             folder: "agent/document/panCard",
+//             format: "webp",
+//         });
+//         agent.panCard.public_id = profileUpload?.public_id;
+//         agent.panCard.url = profileUpload?.secure_url;
+//     }
+
+//     if (aadharCard) {
+//         if (agent?.aadharCard?.public_id) {
+//             await cloudinary.v2.uploader.destroy(agent?.aadharCard?.public_id);
+//         }
+//         const profileUpload = await cloudinary.v2.uploader.upload(panCard, {
+//             folder: "agent/document/aadharCard",
+//             format: "webp",
+//         });
+//         agent.aadharCard.public_id = profileUpload?.public_id;
+//         agent.aadharCard.url = profileUpload?.secure_url;
+//     }
+
+//     if (vetCertificate) {
+//         if (agent?.vetCertificate?.public_id) {
+//             await cloudinary.v2.uploader.destroy(agent?.vetCertificate?.public_id);
+//         }
+//         const profileUpload = await cloudinary.v2.uploader.upload(vetCertificate, {
+//             folder: "agent/document/vetCertificate",
+//             format: "webp",
+//         });
+//         agent.vetCertificate.public_id = profileUpload?.public_id;
+//         agent.vetCertificate.url = profileUpload?.secure_url;
+//     }
+
+//     if (companyCertificate) {
+//         if (agent?.companyCertificate?.public_id) {
+//             await cloudinary.v2.uploader.destroy(agent?.companyCertificate?.public_id);
+//         }
+//         const profileUpload = await cloudinary.v2.uploader.upload(companyCertificate, {
+//             folder: "agent/document/companyCertificate",
+//             format: "webp",
+//         });
+//         agent.companyCertificate.public_id = profileUpload?.public_id;
+//         agent.companyCertificate.url = profileUpload?.secure_url;
+//     }
+
+//     if (gstCertificate) {
+//         if (agent?.gstCertificate?.public_id) {
+//             await cloudinary.v2.uploader.destroy(agent?.gstCertificate?.public_id);
+//         }
+//         const profileUpload = await cloudinary.v2.uploader.upload(gstCertificate, {
+//             folder: "agent/document/gstCertificate",
+//             format: "webp",
+//         });
+//         agent.gstCertificate.public_id = profileUpload?.public_id;
+//         agent.gstCertificate.url = profileUpload?.secure_url;
+//     }
+
+//     await agent.save({ validateBeforeSave: false })
+
+
+//     return res
+//         .status(200)
+//         .json({
+//             success: true,
+//             message: 'Agent details has been saved'
+//         });
+// });
+
+export const AgentUpdateDocument = TryCatch(async (req, res, next) => {
+    const { panCard, aadharCard, vetCertificate, companyCertificate, gstCertificate } = req.body;
     const agentId = req.agent._id;
+
     if (!agentId) {
         return next(new ErrorHandler("Agent ID is required", 400));
     }
@@ -173,76 +257,72 @@ export const AgentUpdateDocument = TryCatch(async (req, res, next) => {
     if (!agent) {
         return next(new ErrorHandler("Agent not found", 404));
     }
-
+    // PAN CARD
     if (panCard) {
         if (agent?.panCard?.public_id) {
-            await cloudinary.v2.uploader.destroy(agent?.panCard?.public_id);
+            await deleteFromS3(agent.panCard.public_id);
         }
-        const profileUpload = await cloudinary.v2.uploader.upload(panCard, {
-            folder: "agent/document/panCard",
-            format: "webp",
-        });
-        agent.panCard.public_id = profileUpload?.public_id;
-        agent.panCard.url = profileUpload?.secure_url;
+
+        const upload = await uploadBase64ToS3(panCard, "agent/document/panCard");
+
+        agent.panCard.public_id = upload.public_id;
+        agent.panCard.url = upload.url;
     }
 
+    // AADHAR CARD
     if (aadharCard) {
         if (agent?.aadharCard?.public_id) {
-            await cloudinary.v2.uploader.destroy(agent?.aadharCard?.public_id);
+            await deleteFromS3(agent.aadharCard.public_id);
         }
-        const profileUpload = await cloudinary.v2.uploader.upload(panCard, {
-            folder: "agent/document/aadharCard",
-            format: "webp",
-        });
-        agent.aadharCard.public_id = profileUpload?.public_id;
-        agent.aadharCard.url = profileUpload?.secure_url;
+
+        const upload = await uploadBase64ToS3(aadharCard, "agent/document/aadharCard");
+
+        agent.aadharCard.public_id = upload.public_id;
+        agent.aadharCard.url = upload.url;
     }
 
+    // VET CERTIFICATE
     if (vetCertificate) {
         if (agent?.vetCertificate?.public_id) {
-            await cloudinary.v2.uploader.destroy(agent?.vetCertificate?.public_id);
+            await deleteFromS3(agent.vetCertificate.public_id);
         }
-        const profileUpload = await cloudinary.v2.uploader.upload(vetCertificate, {
-            folder: "agent/document/vetCertificate",
-            format: "webp",
-        });
-        agent.vetCertificate.public_id = profileUpload?.public_id;
-        agent.vetCertificate.url = profileUpload?.secure_url;
+
+        const upload = await uploadBase64ToS3(vetCertificate, "agent/document/vetCertificate");
+
+        agent.vetCertificate.public_id = upload.public_id;
+        agent.vetCertificate.url = upload.url;
     }
 
+    // COMPANY CERTIFICATE
     if (companyCertificate) {
         if (agent?.companyCertificate?.public_id) {
-            await cloudinary.v2.uploader.destroy(agent?.companyCertificate?.public_id);
+            await deleteFromS3(agent.companyCertificate.public_id);
         }
-        const profileUpload = await cloudinary.v2.uploader.upload(companyCertificate, {
-            folder: "agent/document/companyCertificate",
-            format: "webp",
-        });
-        agent.companyCertificate.public_id = profileUpload?.public_id;
-        agent.companyCertificate.url = profileUpload?.secure_url;
+
+        const upload = await uploadBase64ToS3(companyCertificate, "agent/document/companyCertificate");
+
+        agent.companyCertificate.public_id = upload.public_id;
+        agent.companyCertificate.url = upload.url;
     }
 
+    // GST CERTIFICATE
     if (gstCertificate) {
         if (agent?.gstCertificate?.public_id) {
-            await cloudinary.v2.uploader.destroy(agent?.gstCertificate?.public_id);
+            await deleteFromS3(agent.gstCertificate.public_id);
         }
-        const profileUpload = await cloudinary.v2.uploader.upload(gstCertificate, {
-            folder: "agent/document/gstCertificate",
-            format: "webp",
-        });
-        agent.gstCertificate.public_id = profileUpload?.public_id;
-        agent.gstCertificate.url = profileUpload?.secure_url;
+
+        const upload = await uploadBase64ToS3(gstCertificate, "agent/document/gstCertificate");
+
+        agent.gstCertificate.public_id = upload.public_id;
+        agent.gstCertificate.url = upload.url;
     }
 
-    await agent.save({ validateBeforeSave: false })
+    await agent.save({ validateBeforeSave: false });
 
-
-    return res
-        .status(200)
-        .json({
-            success: true,
-            message: 'Agent details has been saved'
-        });
+    return res.status(200).json({
+        success: true,
+        message: "Agent details has been saved",
+    });
 });
 
 export const AgentDashboardCount = TryCatch(async (req, res, next) => {
